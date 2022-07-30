@@ -147,7 +147,6 @@ void callback_button2 (void) {
 }
 
 int main () {
-    printf("Iniciou\n");
     if(wiringPiSetup() == -1) return 1;
 
     state states[4];
