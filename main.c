@@ -13,6 +13,10 @@
 #define false 0
 typedef int bool;
 
+#define COLOR_GREEN 1
+#define COLOR_YELLOW 2
+#define COLOR_RED 3
+
 struct Light {
     int color;
     int pin;
@@ -26,26 +30,57 @@ struct Semaphore {
     light red;
 } typedef semaphore;
 
+semaphore Primary;
+semaphore Secondary;
+
+light setupLight (int color, int pin) {
+    light L;
+    L.color = color;
+    L.pin = pin;
+    L.state = false;
+    L.prevState = false;
+
+    pinMode(pin, OUTPUT);
+
+    return L;
+}
+
+void setupSemaphore () {
+    Primary.green = setupLight(COLOR_GREEN, GREEN);
+    Primary.yellow = setupLight(COLOR_YELLOW, YELLOW);
+    Primary.red = setupLight(COLOR_RED, RED);
+
+    Secondary.green = setupLight(COLOR_GREEN, GREEN_2);
+    Secondary.yellow = setupLight(COLOR_YELLOW, YELLOW_2);
+    Secondary.red = setupLight(COLOR_RED, RED_2);
+}
+
+void setState (int s1, int s2, int s3, int s4, int s5, int s6) {
+    digitalWrite(Primary.green.pin, s1);
+    digitalWrite(Primary.yellow.pin, s2);
+    digitalWrite(Primary.red.pin, s3);
+    digitalWrite(Secondary.green.pin, s4);
+    digitalWrite(Secondary.yellow.pin, s5);
+    digitalWrite(Secondary.red.pin, s6);
+}
+
 void temporizador () {
-    digitalWrite(GREEN, 1);
-    delay(20000);
-    digitalWrite(GREEN, 0);
-    digitalWrite(YELLOW, 1);
+    setState(1, 0, 0, 0, 0, 1);
+    delay(17000);
+    setState(0, 1, 0, 0, 0, 1);
     delay(3000);
-    digitalWrite(YELLOW, 0);
-    digitalWrite(RED, 1);
-    delay(10000);
-    digitalWrite(RED, 0);
+    setState(0, 0, 1, 1, 0, 0);
+    delay(7000);
+    setState(0, 0, 1, 0, 1, 0);
+    delay(3000);
 }
 
 int main () {
+    printf("Iniciou\n");
     if(wiringPiSetup() == -1) return 1;
-    
-    printf("Configura portas");
-    pinMode(GREEN, OUTPUT);
-    pinMode(YELLOW, OUTPUT);
-    pinMode(RED, OUTPUT);
 
+    setupSemaphore();
+  
     while(1) {
         temporizador();
     }
