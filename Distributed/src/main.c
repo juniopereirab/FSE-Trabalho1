@@ -149,21 +149,24 @@ int main () {
 
 void func(int sockfd) {
     char buff[MAX];
-    int n;
-    
+    int n;  
+
     while(1) {
         bzero(buff, sizeof(buff));
-        printf("Enter the string : ");
+        printf("%d\n", reportsLength);
         n = 0;
-        while ((buff[n++] = getchar()) != '\n');
-        write(sockfd, buff, sizeof(buff));
-        bzero(buff, sizeof(buff));
-        read(sockfd, buff, sizeof(buff));
-        printf("From Server : %s", buff);
-        if ((strncmp(buff, "exit", 4)) == 0) {
-            printf("Client Exit...\n");
-            break;
+        while(n < reportsLength) {
+            buff[0] = reports[n].speed;
+            buff[1] = reports[n].direction;
+            buff[2] = reports[n].violation;
+            write(sockfd, buff, sizeof(buff));
+            bzero(buff, sizeof(buff));
+            n++;
+            if(n == reportsLength) {
+                reportsLength = 0;
+            }
         }
+        delay(2000);        
     }
 }
 
@@ -178,7 +181,7 @@ void *thread_func (void *arg) {
     servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port = htons(PORT);
    
-    connectSocket (sockfd, servaddr);
+    connectSocket(sockfd, servaddr);
    
     func(sockfd);   
     close(sockfd);
@@ -330,6 +333,7 @@ void callback_speed_out (void) {
 
         if (total > 60 || position == 0 || position == 1 || position == 2) {
             violation = true;
+            printf("Passou sinal vermelho 1\n");
         }
         addReport(WAY_RIGHT, total, violation);
         street_A_IN = false;
@@ -352,6 +356,7 @@ void callback_speed_out2 (void) {
 
         if (total > 60 || position == 0 || position == 1 || position == 2) {
             violation = true;
+            printf("Passou sinal vermelho 2\n");
         }
         addReport(WAY_LEFT, total, violation);
         street_B_IN = false;
