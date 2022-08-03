@@ -1,76 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wiringPi.h>
-
-#define GREEN 8
-#define YELLOW 9
-#define RED 14
-
-#define GREEN_2 30
-#define YELLOW_2 21
-#define RED_2 22
-
-#define BUTTON_1 12
-#define BUTTON_2 13
-
-#define SENSOR_CAR_1 7
-#define SENSOR_CAR_2 0
-
-#define SENSOR_SPEED_1 2 // Passa Carro 1
-#define SENSOR_SPEED_2 3 // Para Carro 1
-#define SENSOR_SPEED_3 23 // Passa Carro 2
-#define SENSOR_SPEED_4 24 // Para Carro 2
-
-#define true 1
-#define false 0
-typedef int bool;
-
-#define COLOR_GREEN 1
-#define COLOR_YELLOW 2
-#define COLOR_RED 3
-
-#define DISTANCE 1000 // ( 1 meter * 1000 ms )
-
-#define WAY_RIGHT 1 // Indo para direita (Via principal)
-#define WAY_LEFT 2 // Indo para esquerda (Via principal)
-#define WAY_UP 3 // Indo para cima (Via auxiliar)
-#define WAY_DOWN 4 // Indo para baixo (Via auxiliar)
-
-struct Light {
-    int color;
-    int pin;
-    bool state;
-    bool prevState;
-} typedef light;
-
-struct Semaphore {
-    light green;
-    light yellow;
-    light red;
-} typedef semaphore;
-
-struct State {
-    int s1;
-    int s2;
-    int s3;
-    int s4;
-    int s5;
-    int s6;
-    long time;
-    bool minimum;
-} typedef state;
-
-struct Report {
-    int speed;
-    int direction;
-    bool violation;
-} typedef report;
+#include <pthread.h>
+#include "socket.h"
+#include "definitions.h"
 
 semaphore Primary;
 semaphore Secondary;
 
 report *reports;
 int reportsLength = 0;
+
+pthread_t threadA;
 
 bool minimumHasPassed = false;
 bool button1HasBeenPressed = false;
@@ -79,19 +20,169 @@ bool button2HasBeenPressed = false;
 long lastInterruptTime = 0;
 int position = 0;
 
-int nPassedCars = 0;
-int nPassedCars2 = 0;
-int nPassedCars3 = 0;
-int nPassedCars4 = 0;
-
-int nViolations = 0;
-int nViolations2 = 0;
-
 int milisIn = 0;
 int milisIn2 = 0;
 
 bool street_A_IN = false;
 bool street_B_IN = false;
+
+void func(int sockfd);
+void *thread_func (void *arg);
+void updateReportsLength ();
+void addReport (int way, int speed, bool violation);
+light setupLight (int color, int pin);
+void setupSemaphore ();
+void setState (int s1, int s2, int s3, int s4, int s5, int s6);
+void timer (state S);
+void callback_button1 (void);
+void callback_button2 (void);
+void sensor_aux (void);
+void sensor_aux2 (void);
+void callback_speed_in (void);
+void callback_speed_out (void);
+void callback_speed_in2 (void);
+void callback_speed_out2 (void);
+
+int main () {
+    pthread_create(&threadA, NULL, thread_func, NULL);
+    if(wiringPiSetup() == -1) return 1;
+
+    state states[6];
+
+    states[0].s1 = 1;
+    states[0].s2 = 0;
+    states[0].s3 = 0;
+    states[0].s4 = 0;
+    states[0].s5 = 0;
+    states[0].s6 = 1;
+
+    states[0].time = 20000;
+    states[0].minimum = true;
+
+    states[1].s1 = 0;
+    states[1].s2 = 1;
+    states[1].s3 = 0;
+    states[1].s4 = 0;
+    states[1].s5 = 0;
+    states[1].s6 = 1;
+
+    states[1].time = 3000;
+    states[1].minimum = false;
+
+    states[2].s1 = 0;
+    states[2].s2 = 0;
+    states[2].s3 = 1;
+    states[2].s4 = 0;
+    states[2].s5 = 0;
+    states[2].s6 = 1;
+
+    states[2].time = 1000;
+    states[2].minimum = false;
+    
+    states[3].s1 = 0;
+    states[3].s2 = 0;
+    states[3].s3 = 1;
+    states[3].s4 = 1;
+    states[3].s5 = 0;
+    states[3].s6 = 0;
+
+    states[3].time = 10000;
+    states[3].minimum = true;
+
+    states[4].s1 = 0;
+    states[4].s2 = 0;
+    states[4].s3 = 1;
+    states[4].s4 = 0;
+    states[4].s5 = 1;
+    states[4].s6 = 0;
+
+    states[4].time = 3000;
+    states[4].minimum = false;
+
+    states[5].s1 = 0;
+    states[5].s2 = 0;
+    states[5].s3 = 1;
+    states[5].s4 = 0;
+    states[5].s5 = 0;
+    states[5].s6 = 1;
+
+    states[5].time = 1000;
+    states[5].minimum = false;
+
+    setupSemaphore();
+    
+    pinMode(BUTTON_1, INPUT);
+    pinMode(BUTTON_2, INPUT);
+
+    pinMode(SENSOR_CAR_1, INPUT);
+    pinMode(SENSOR_CAR_2, INPUT);
+
+    pullUpDnControl(BUTTON_1, PUD_UP);
+    pullUpDnControl(BUTTON_2, PUD_UP);
+
+    pullUpDnControl(SENSOR_CAR_1, PUD_UP);
+    pullUpDnControl(SENSOR_CAR_2, PUD_UP);
+
+    wiringPiISR(BUTTON_1, INT_EDGE_RISING, &callback_button1);
+    wiringPiISR(BUTTON_2, INT_EDGE_RISING, &callback_button2);
+
+    wiringPiISR(SENSOR_CAR_2, INT_EDGE_RISING, &sensor_aux2);
+    wiringPiISR(SENSOR_CAR_1, INT_EDGE_RISING, &sensor_aux);
+
+    wiringPiISR(SENSOR_SPEED_1, INT_EDGE_FALLING, &callback_speed_out);
+    wiringPiISR(SENSOR_SPEED_2, INT_EDGE_RISING, &callback_speed_in);
+
+    wiringPiISR(SENSOR_SPEED_3, INT_EDGE_RISING, &callback_speed_in2);
+    wiringPiISR(SENSOR_SPEED_4, INT_EDGE_FALLING, &callback_speed_out2);
+
+    while(1) {
+        timer(states[position]);
+        position++;
+        if( position == 6 ) {
+            position = 0;
+        }
+    }
+
+    free(reports);
+    return 0;
+}
+
+void func(int sockfd) {
+    char buff[MAX];
+    int n;
+    
+    while(1) {
+        bzero(buff, sizeof(buff));
+        printf("Enter the string : ");
+        n = 0;
+        while ((buff[n++] = getchar()) != '\n');
+        write(sockfd, buff, sizeof(buff));
+        bzero(buff, sizeof(buff));
+        read(sockfd, buff, sizeof(buff));
+        printf("From Server : %s", buff);
+        if ((strncmp(buff, "exit", 4)) == 0) {
+            printf("Client Exit...\n");
+            break;
+        }
+    }
+}
+
+void *thread_func (void *arg) {
+    int sockfd, connfd;
+    struct sockaddr_in servaddr, cli;
+   
+    sockfd = configureSocket();
+    bzero(&servaddr, sizeof(servaddr));
+   
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_port = htons(PORT);
+   
+    connectSocket (sockfd, servaddr);
+   
+    func(sockfd);   
+    close(sockfd);
+}
 
 void updateReportsLength () {
     reports = (report *) malloc((reportsLength + 1) * sizeof(report));
@@ -269,106 +360,3 @@ void callback_speed_out2 (void) {
     }
 }
 
-int main () {
-    if(wiringPiSetup() == -1) return 1;
-
-    state states[6];
-
-    states[0].s1 = 1;
-    states[0].s2 = 0;
-    states[0].s3 = 0;
-    states[0].s4 = 0;
-    states[0].s5 = 0;
-    states[0].s6 = 1;
-
-    states[0].time = 20000;
-    states[0].minimum = true;
-
-    states[1].s1 = 0;
-    states[1].s2 = 1;
-    states[1].s3 = 0;
-    states[1].s4 = 0;
-    states[1].s5 = 0;
-    states[1].s6 = 1;
-
-    states[1].time = 3000;
-    states[1].minimum = false;
-
-    states[2].s1 = 0;
-    states[2].s2 = 0;
-    states[2].s3 = 1;
-    states[2].s4 = 0;
-    states[2].s5 = 0;
-    states[2].s6 = 1;
-
-    states[2].time = 1000;
-    states[2].minimum = false;
-    
-    states[3].s1 = 0;
-    states[3].s2 = 0;
-    states[3].s3 = 1;
-    states[3].s4 = 1;
-    states[3].s5 = 0;
-    states[3].s6 = 0;
-
-    states[3].time = 10000;
-    states[3].minimum = true;
-
-    states[4].s1 = 0;
-    states[4].s2 = 0;
-    states[4].s3 = 1;
-    states[4].s4 = 0;
-    states[4].s5 = 1;
-    states[4].s6 = 0;
-
-    states[4].time = 3000;
-    states[4].minimum = false;
-
-    states[5].s1 = 0;
-    states[5].s2 = 0;
-    states[5].s3 = 1;
-    states[5].s4 = 0;
-    states[5].s5 = 0;
-    states[5].s6 = 1;
-
-    states[5].time = 1000;
-    states[5].minimum = false;
-
-    setupSemaphore();
-  
-    
-    pinMode(BUTTON_1, INPUT);
-    pinMode(BUTTON_2, INPUT);
-
-    pinMode(SENSOR_CAR_1, INPUT);
-    pinMode(SENSOR_CAR_2, INPUT);
-
-    pullUpDnControl(BUTTON_1, PUD_UP);
-    pullUpDnControl(BUTTON_2, PUD_UP);
-
-    pullUpDnControl(SENSOR_CAR_1, PUD_UP);
-    pullUpDnControl(SENSOR_CAR_2, PUD_UP);
-
-    wiringPiISR(BUTTON_1, INT_EDGE_RISING, &callback_button1);
-    wiringPiISR(BUTTON_2, INT_EDGE_RISING, &callback_button2);
-
-    wiringPiISR(SENSOR_CAR_2, INT_EDGE_RISING, &sensor_aux2);
-    wiringPiISR(SENSOR_CAR_1, INT_EDGE_RISING, &sensor_aux);
-
-    wiringPiISR(SENSOR_SPEED_1, INT_EDGE_FALLING, &callback_speed_out);
-    wiringPiISR(SENSOR_SPEED_2, INT_EDGE_RISING, &callback_speed_in);
-
-    wiringPiISR(SENSOR_SPEED_3, INT_EDGE_RISING, &callback_speed_in2);
-    wiringPiISR(SENSOR_SPEED_4, INT_EDGE_FALLING, &callback_speed_out2);
-
-    while(1) {
-        timer(states[position]);
-        position++;
-        if( position == 6 ) {
-            position = 0;
-        }
-    }
-
-    free(reports);
-    return 0;
-}
