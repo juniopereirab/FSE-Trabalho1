@@ -1,12 +1,16 @@
 #include "socket.h"
 #include "definitions.h"
 #include <errno.h>
+#include <signal.h>
 
 report *reports;
 int reportsLength = 0;
 int nViolations = 0;
 int nRedSign = 0;
 int mediaSpeed = 0;
+
+bool nightMode = false;
+bool emergencyMode = false;
 
 void updateReportsLength () {
     reports = (report *) malloc((reportsLength + 1) * sizeof(report));
@@ -20,7 +24,22 @@ void addReport (int way, int speed, bool violation) {
     reports[reportsLength - 1].violation = violation;
 }
 
+void handle_signal(int sig) {
+    // CTRL + \ /
+    if(sig == 3) {
+        nightMode = !nightMode;
+    }
+
+    // CTRL + Z
+    if(sig == 20) {
+        emergencyMode = !emergencyMode;
+    }
+}
+
 int main () {
+    // signal(SIGQUIT, handle_signal);
+    // signal(SIGTSTP, handle_signal);
+
     bool opt = true;
     int sockfd, connfd[4], len, i;
     int max_sd, sd, new_socket, valread, addrlen, activity, max_conn = 4;
@@ -87,6 +106,26 @@ int main () {
             sd = connfd[i];  
             if (FD_ISSET(sd , &readfds)) {  
                 if ((valread = read( sd , buff, MAX)) == 0) {
+                    if(nightMode) {
+                        printf("Entrou aqui\n");
+                        buff[0] = 'n';
+                        buff[1] = 'i';
+                        buff[2] = 'g';
+                        buff[3] = 'h';
+                        buff[4] = 't';
+                        send(sd , buff , strlen(buff) , 0);
+                        bzero(buff, MAX);
+                    }
+
+                    if(emergencyMode) {
+                        buff[0] = 'e';
+                        buff[1] = 'm';
+                        buff[2] = 'e';
+                        buff[3] = 'r';
+                        buff[4] = 'g';
+                        send(sd , buff , strlen(buff) , 0);
+                        bzero(buff, MAX);
+                    }
                     close( sd );  
                     connfd[i] = 0;
                 } else {  
