@@ -1,24 +1,24 @@
 #ifndef DEFINITION_H
 #define DEFINITION_H
 
-#define GREEN 8
-#define YELLOW 9
-#define RED 14
+// #define GREEN 8
+// #define YELLOW 9
+// #define RED 14
 
-#define GREEN_2 30
-#define YELLOW_2 21
-#define RED_2 22
+// #define GREEN_2 30
+// #define YELLOW_2 21
+// #define RED_2 22
 
-#define BUTTON_1 12
-#define BUTTON_2 13
+// #define BUTTON_1 12
+// #define BUTTON_2 13
 
-#define SENSOR_CAR_1 7
-#define SENSOR_CAR_2 0
+// #define SENSOR_CAR_1 7
+// #define SENSOR_CAR_2 0
 
-#define SENSOR_SPEED_1 2 // Passa Carro 1
-#define SENSOR_SPEED_2 3 // Para Carro 1
-#define SENSOR_SPEED_3 23 // Passa Carro 2
-#define SENSOR_SPEED_4 24 // Para Carro 2
+// #define SENSOR_SPEED_1 2 // Passa Carro 1
+// #define SENSOR_SPEED_2 3 // Para Carro 1
+// #define SENSOR_SPEED_3 23 // Passa Carro 2
+// #define SENSOR_SPEED_4 24 // Para Carro 2
 
 #define true 1
 #define false 0

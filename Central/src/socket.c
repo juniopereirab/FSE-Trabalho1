@@ -24,9 +24,9 @@ void bindSocket (int sockfd, struct sockaddr_in servaddr) {
 }
 
 void listenSocket (int sockfd) {
-    int l = listen(sockfd, 5);
+    int l = listen(sockfd, 4);
 
-    if(l != 0) {
+    if(l < 0) {
         printf("Listen failed...\n");
         exit(0);
     } else {

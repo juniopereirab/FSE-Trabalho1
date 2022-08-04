@@ -5,6 +5,25 @@
 #include "socket.h"
 #include "definitions.h"
 
+int GREEN;
+int YELLOW;
+int RED;
+
+int GREEN_2;
+int YELLOW_2;
+int RED_2;
+
+int BUTTON_1;
+int BUTTON_2;
+
+int SENSOR_CAR_1;
+int SENSOR_CAR_2;
+
+int SENSOR_SPEED_1;
+int SENSOR_SPEED_2;
+int SENSOR_SPEED_3;
+int SENSOR_SPEED_4;
+
 semaphore Primary;
 semaphore Secondary;
 
@@ -43,9 +62,36 @@ void callback_speed_out (void);
 void callback_speed_in2 (void);
 void callback_speed_out2 (void);
 
-int main () {
+int main (int argc, char * argv[]) {
     pthread_create(&threadA, NULL, thread_func, NULL);
     if(wiringPiSetup() == -1) return 1;
+
+    FILE* crossing;
+
+    crossing = fopen(argv[1], "r");
+    
+    if(!crossing) {
+        printf("Arquivo de inicialização não encontrado\n");
+    } else {
+        fscanf(crossing, "%d", &GREEN);
+        fscanf(crossing, "%d", &YELLOW);
+        fscanf(crossing, "%d", &RED);
+        fscanf(crossing, "%d", &GREEN_2);
+        fscanf(crossing, "%d", &YELLOW_2);
+        fscanf(crossing, "%d", &RED_2);
+        fscanf(crossing, "%d", &BUTTON_1);
+        fscanf(crossing, "%d", &BUTTON_2);
+        fscanf(crossing, "%d", &SENSOR_CAR_1);
+        fscanf(crossing, "%d", &SENSOR_CAR_2);
+        fscanf(crossing, "%d", &SENSOR_SPEED_1);
+        fscanf(crossing, "%d", &SENSOR_SPEED_2);
+        fscanf(crossing, "%d", &SENSOR_SPEED_3);
+        fscanf(crossing, "%d", &SENSOR_SPEED_4);
+    }
+
+    printf("Value of n=%d\n", YELLOW);
+
+    fclose(crossing);
 
     state states[6];
 
@@ -113,25 +159,28 @@ int main () {
     
     pinMode(BUTTON_1, INPUT);
     pinMode(BUTTON_2, INPUT);
-
     pinMode(SENSOR_CAR_1, INPUT);
     pinMode(SENSOR_CAR_2, INPUT);
+    pinMode(SENSOR_SPEED_1, INPUT);
+    pinMode(SENSOR_SPEED_2, INPUT);
+    pinMode(SENSOR_SPEED_3, INPUT);
+    pinMode(SENSOR_SPEED_4, INPUT);
 
     pullUpDnControl(BUTTON_1, PUD_UP);
     pullUpDnControl(BUTTON_2, PUD_UP);
-
     pullUpDnControl(SENSOR_CAR_1, PUD_UP);
     pullUpDnControl(SENSOR_CAR_2, PUD_UP);
+    pullUpDnControl(SENSOR_SPEED_1, PUD_DOWN);
+    pullUpDnControl(SENSOR_SPEED_2, PUD_UP);
+    pullUpDnControl(SENSOR_SPEED_3, PUD_UP);
+    pullUpDnControl(SENSOR_SPEED_4, PUD_DOWN);
 
     wiringPiISR(BUTTON_1, INT_EDGE_RISING, &callback_button1);
     wiringPiISR(BUTTON_2, INT_EDGE_RISING, &callback_button2);
-
     wiringPiISR(SENSOR_CAR_2, INT_EDGE_RISING, &sensor_aux2);
     wiringPiISR(SENSOR_CAR_1, INT_EDGE_RISING, &sensor_aux);
-
     wiringPiISR(SENSOR_SPEED_1, INT_EDGE_FALLING, &callback_speed_out);
     wiringPiISR(SENSOR_SPEED_2, INT_EDGE_RISING, &callback_speed_in);
-
     wiringPiISR(SENSOR_SPEED_3, INT_EDGE_RISING, &callback_speed_in2);
     wiringPiISR(SENSOR_SPEED_4, INT_EDGE_FALLING, &callback_speed_out2);
 
@@ -178,7 +227,7 @@ void *thread_func (void *arg) {
     bzero(&servaddr, sizeof(servaddr));
    
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_addr.s_addr = inet_addr("164.41.98.26");
     servaddr.sin_port = htons(PORT);
    
     connectSocket(sockfd, servaddr);

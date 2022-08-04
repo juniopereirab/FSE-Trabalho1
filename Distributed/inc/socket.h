@@ -10,7 +10,7 @@
 #include <sys/types.h>
 
 #define MAX 100
-#define PORT 8080
+#define PORT 10061
 #define SA struct sockaddr
 
 int configureSocket ();
