@@ -31,6 +31,9 @@ report *reports;
 int reportsLength = 0;
 
 pthread_t threadA;
+pthread_t threadB;
+
+state states[6];
 
 bool minimumHasPassed = false;
 bool button1HasBeenPressed = false;
@@ -50,6 +53,9 @@ void *thread_func (void *arg);
 void updateReportsLength ();
 void addReport (int way, int speed, bool violation);
 light setupLight (int color, int pin);
+void setupNightMode();
+void setupEmergency();
+void setupState();
 void setupSemaphore ();
 void setState (int s1, int s2, int s3, int s4, int s5, int s6);
 void timer (state S);
@@ -93,68 +99,7 @@ int main (int argc, char * argv[]) {
 
     fclose(crossing);
 
-    state states[6];
-
-    states[0].s1 = 1;
-    states[0].s2 = 0;
-    states[0].s3 = 0;
-    states[0].s4 = 0;
-    states[0].s5 = 0;
-    states[0].s6 = 1;
-
-    states[0].time = 20000;
-    states[0].minimum = true;
-
-    states[1].s1 = 0;
-    states[1].s2 = 1;
-    states[1].s3 = 0;
-    states[1].s4 = 0;
-    states[1].s5 = 0;
-    states[1].s6 = 1;
-
-    states[1].time = 3000;
-    states[1].minimum = false;
-
-    states[2].s1 = 0;
-    states[2].s2 = 0;
-    states[2].s3 = 1;
-    states[2].s4 = 0;
-    states[2].s5 = 0;
-    states[2].s6 = 1;
-
-    states[2].time = 1000;
-    states[2].minimum = false;
-    
-    states[3].s1 = 0;
-    states[3].s2 = 0;
-    states[3].s3 = 1;
-    states[3].s4 = 1;
-    states[3].s5 = 0;
-    states[3].s6 = 0;
-
-    states[3].time = 10000;
-    states[3].minimum = true;
-
-    states[4].s1 = 0;
-    states[4].s2 = 0;
-    states[4].s3 = 1;
-    states[4].s4 = 0;
-    states[4].s5 = 1;
-    states[4].s6 = 0;
-
-    states[4].time = 3000;
-    states[4].minimum = false;
-
-    states[5].s1 = 0;
-    states[5].s2 = 0;
-    states[5].s3 = 1;
-    states[5].s4 = 0;
-    states[5].s5 = 0;
-    states[5].s6 = 1;
-
-    states[5].time = 1000;
-    states[5].minimum = false;
-
+    setupState();
     setupSemaphore();
     
     pinMode(BUTTON_1, INPUT);
@@ -219,6 +164,17 @@ void func(int sockfd) {
     }
 }
 
+void *thread_funcB (void *arg) {
+    char buff[MAX];
+    int n;
+    int sockfd = (int) arg;
+
+    while(1) {
+        read(sockfd, buff, MAX);
+        printf("%s\n", buff);
+    }
+}
+
 void *thread_func (void *arg) {
     int sockfd, connfd;
     struct sockaddr_in servaddr, cli;
@@ -232,6 +188,7 @@ void *thread_func (void *arg) {
    
     connectSocket(sockfd, servaddr);
    
+    pthread_create(&threadB, NULL, thread_funcB, (void*)sockfd);
     func(sockfd);   
     close(sockfd);
 }
@@ -258,6 +215,182 @@ light setupLight (int color, int pin) {
     pinMode(pin, OUTPUT);
 
     return L;
+}
+
+void setupEmergency () {
+    states[0].s1 = 0;
+    states[0].s2 = 0;
+    states[0].s3 = 1;
+    states[0].s4 = 1;
+    states[0].s5 = 0;
+    states[0].s6 = 0;
+
+    states[0].time = 1000;
+    states[0].minimum = false;
+
+    states[1].s1 = 0;
+    states[1].s2 = 0;
+    states[1].s3 = 1;
+    states[1].s4 = 1;
+    states[1].s5 = 0;
+    states[1].s6 = 0;
+
+    states[1].time = 1000;
+    states[1].minimum = false;
+
+    states[2].s1 = 0;
+    states[2].s2 = 0;
+    states[2].s3 = 1;
+    states[2].s4 = 1;
+    states[2].s5 = 0;
+    states[2].s6 = 0;
+
+    states[2].time = 1000;
+    states[2].minimum = false;
+    
+    states[3].s1 = 0;
+    states[3].s2 = 0;
+    states[3].s3 = 1;
+    states[3].s4 = 1;
+    states[3].s5 = 0;
+    states[3].s6 = 0;
+
+    states[3].time = 1000;
+    states[3].minimum = false;
+
+    states[4].s1 = 0;
+    states[4].s2 = 0;
+    states[4].s3 = 1;
+    states[4].s4 = 1;
+    states[4].s5 = 0;
+    states[4].s6 = 0;
+
+    states[4].time = 1000;
+    states[4].minimum = false;
+
+    states[5].s1 = 0;
+    states[5].s2 = 0;
+    states[5].s3 = 1;
+    states[5].s4 = 1;
+    states[5].s5 = 0;
+    states[5].s6 = 0;
+
+    states[5].time = 1000;
+    states[5].minimum = false;
+}
+
+void setupNightMode () {
+    states[1].s1 = 0;
+    states[1].s2 = 1;
+    states[1].s3 = 0;
+    states[1].s4 = 0;
+    states[1].s5 = 1;
+    states[1].s6 = 0;
+
+    states[1].time = 1000;
+    states[1].minimum = false;
+
+    states[2].s1 = 0;
+    states[2].s2 = 1;
+    states[2].s3 = 0;
+    states[2].s4 = 0;
+    states[2].s5 = 1;
+    states[2].s6 = 0;
+
+    states[2].time = 1000;
+    states[2].minimum = false;
+    
+    states[3].s1 = 0;
+    states[3].s2 = 1;
+    states[3].s3 = 0;
+    states[3].s4 = 0;
+    states[3].s5 = 1;
+    states[3].s6 = 0;
+
+    states[3].time = 1000;
+    states[3].minimum = false;
+
+    states[4].s1 = 0;
+    states[4].s2 = 1;
+    states[4].s3 = 0;
+    states[4].s4 = 0;
+    states[4].s5 = 1;
+    states[4].s6 = 0;
+
+    states[4].time = 1000;
+    states[4].minimum = false;
+
+    states[5].s1 = 0;
+    states[5].s2 = 1;
+    states[5].s3 = 0;
+    states[5].s4 = 0;
+    states[5].s5 = 1;
+    states[5].s6 = 0;
+
+    states[5].time = 1000;
+    states[5].minimum = false;
+}
+
+void setupState () {
+    states[0].s1 = 1;
+    states[0].s2 = 0;
+    states[0].s3 = 0;
+    states[0].s4 = 0;
+    states[0].s5 = 0;
+    states[0].s6 = 1;
+
+    states[0].time = 20000;
+    states[0].minimum = true;
+
+    states[1].s1 = 0;
+    states[1].s2 = 1;
+    states[1].s3 = 0;
+    states[1].s4 = 0;
+    states[1].s5 = 0;
+    states[1].s6 = 1;
+
+    states[1].time = 3000;
+    states[1].minimum = false;
+
+    states[2].s1 = 0;
+    states[2].s2 = 0;
+    states[2].s3 = 1;
+    states[2].s4 = 0;
+    states[2].s5 = 0;
+    states[2].s6 = 1;
+
+    states[2].time = 1000;
+    states[2].minimum = false;
+    
+    states[3].s1 = 0;
+    states[3].s2 = 0;
+    states[3].s3 = 1;
+    states[3].s4 = 1;
+    states[3].s5 = 0;
+    states[3].s6 = 0;
+
+    states[3].time = 10000;
+    states[3].minimum = true;
+
+    states[4].s1 = 0;
+    states[4].s2 = 0;
+    states[4].s3 = 1;
+    states[4].s4 = 0;
+    states[4].s5 = 1;
+    states[4].s6 = 0;
+
+    states[4].time = 3000;
+    states[4].minimum = false;
+
+    states[5].s1 = 0;
+    states[5].s2 = 0;
+    states[5].s3 = 1;
+    states[5].s4 = 0;
+    states[5].s5 = 0;
+    states[5].s6 = 1;
+
+    states[5].time = 1000;
+    states[5].minimum = false;
 }
 
 void setupSemaphore () {
